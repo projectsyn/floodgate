@@ -67,9 +67,13 @@ func Test_getTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
+			th := tagHandler{
+				log: getLogger(),
+			}
+
 			imageDay = tt.args.imageDay
 
-			if got := getTag(tt.args.day, tt.args.hour, tt.args.currentTime); got != tt.want {
+			if got := th.getTag(tt.args.day, tt.args.hour, tt.args.currentTime); got != tt.want {
 				t.Errorf("getTag() = %v, want %v", got, tt.want)
 			}
 		})
@@ -175,7 +179,7 @@ func Test_getWindow(t *testing.T) {
 			req, err := http.NewRequest(tt.args.method, tt.args.URL, nil)
 			assert.NoError(t, err)
 
-			router().ServeHTTP(rr, req)
+			router(getLogger()).ServeHTTP(rr, req)
 
 			if rr.Code != tt.want.status {
 				t.Errorf("getWindow() = %v, want %v", rr.Code, tt.want.status)
