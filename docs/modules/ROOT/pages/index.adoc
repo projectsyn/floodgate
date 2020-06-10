@@ -1,0 +1,9 @@
+= Floodgate
+
+image::syn.png[]
+
+Floodgate controls channels for Rancher's system-upgrade-controller.
+
+== Getting Started
+
+Please see the project's https://github.com/projectsyn/floodgate/blob/master/README.md[README.md] for a getting started.

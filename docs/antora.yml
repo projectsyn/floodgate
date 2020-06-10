@@ -1,0 +1,6 @@
+name: floodgate
+title: floodgate
+version: master
+start_page: ROOT:index.adoc
+nav:
+- modules/ROOT/nav.adoc
