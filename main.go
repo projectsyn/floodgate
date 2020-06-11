@@ -45,14 +45,18 @@ func printVersion(log logr.Logger) {
 	log.Info("Go", "Version", runtime.Version(), "OS", runtime.GOOS, "ARCH", runtime.GOARCH)
 }
 
-func main() {
-
+func getLogger() logr.Logger {
 	formatter := new(logrus.TextFormatter)
 	formatter.DisableTimestamp = true
 	logger := logrus.New()
 	logger.SetFormatter(formatter)
 
-	log := logrusr.NewLogger(logger)
+	return logrusr.NewLogger(logger)
+}
+
+func main() {
+
+	log := getLogger()
 
 	printVersion(log)
 
