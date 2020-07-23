@@ -1,41 +1,21 @@
-# SUC channel provider
+# Floodgate: A channel provider for the System Upgrade Controller
 
-Floodgate controls [SUC](https://github.com/rancher/system-upgrade-controller) channels
+Floodgate controls [SUC](https://github.com/rancher/system-upgrade-controller) channels.
 
-It will provide an HTTP endpoint with the following matching rules:
-`/window/{day:[0-6]}/{hour:2[0-3]|[01][0-9]}`
+This repository is part of Project Syn.
+For documentation on Project Syn and this component, see https://syn.tools.
 
-Where day is the day of week and hour the hour of the day. It will:
-* return the update tag of the previous week, if the current local time is prior to day and hour
-* return the update tag of this week, if the current local time is after day and hour
+## Documentation
 
-It assumes that:
-* the image for this day is already built. So don't define a window when the image hasn't been built yet.
-* the day and hour are in its own timezone
+Documentation for this component is written using [Asciidoc][asciidoc] and [Antora][antora].
+It is located in the [docs/](docs) folder.
+The [Divio documentation structure](https://documentation.divio.com/) is used to organize its content.
 
-For example, if you build the SUC update image on Monday at 18:00 and have a `floodgate` instance running with the default configuration, so it assumes the image will be built Mondays.
+## Contributing and license
 
-It's Monday 17:30 and you execute `curl localhost:8080/window/1/17` it will correctly return this week's image. But if the image will be built at 18:00 the SUC jobs will get stuck with `ImagePullError`s.
+This library is licensed under [BSD-3-Clause](LICENSE).
+For information about how to contribute see [CONTRIBUTING](CONTRIBUTING.md).
 
-## Getting started
-
-* `go run main.go`
-* Define a SUC plan pointing to the `floodgate` instance in the channel field:
-  ```yaml
-  apiVersion: upgrade.cattle.io/v1
-  kind: Plan
-
-  metadata:
-    name: k3os-latest
-    namespace: k3os-system
-
-  spec:
-    channel: http://localhost:8080/window/2/22
-  ```
-* SUC will now trigger the plans on Tuesday after 22:00
-
-## Configuration
-
-| EnVar | Description |
-|-------|-------------|
-| FG_IMAGE_DAY | Defines on what day the image is built. It will then calculate the tag accordingly in the form of `date "+%Y%m%d"`. Defaults to 1(Monday).|
+[commodore]: https://docs.syn.tools/commodore/index.html
+[asciidoc]: https://asciidoctor.org/
+[antora]: https://antora.org/
