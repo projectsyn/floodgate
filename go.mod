@@ -6,6 +6,6 @@ require (
 	github.com/bombsimon/logrusr v0.0.0-20200131103305-03a291ce59b4
 	github.com/go-logr/logr v0.2.1
 	github.com/gorilla/mux v1.8.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 )
