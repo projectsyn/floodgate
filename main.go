@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bombsimon/logrusr"
+	"github.com/bombsimon/logrusr/v3"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -51,7 +51,7 @@ func getLogger() logr.Logger {
 	logger := logrus.New()
 	logger.SetFormatter(formatter)
 
-	return logrusr.NewLogger(logger)
+	return logrusr.New(logger)
 }
 
 func main() {
