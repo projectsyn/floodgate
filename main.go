@@ -17,6 +17,7 @@ import (
 
 const (
 	defaultImageDay = 1
+	tagFormat       = "20060102"
 )
 
 var (
@@ -79,7 +80,7 @@ func (t *tagHandler) getWindow(w http.ResponseWriter, r *http.Request) {
 
 	day, err := strconv.Atoi(vars["day"])
 	if err != nil {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		errMessage := fmt.Sprintf("error parsing day")
 		_, err := io.WriteString(w, errMessage)
 		t.log.Error(err, errMessage)
@@ -88,14 +89,21 @@ func (t *tagHandler) getWindow(w http.ResponseWriter, r *http.Request) {
 
 	hour, err := strconv.Atoi(vars["hour"])
 	if err != nil {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		errMessage := fmt.Sprintf("error parsing hour")
 		_, err := io.WriteString(w, errMessage)
 		fmt.Println(err, errMessage)
 		return
 	}
 
-	tag := t.getTag(day, hour, time.Now())
+	tag, err := t.getTag(day, hour, time.Now())
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		errMessage := fmt.Sprintf("error calculating tag: %s", err)
+		_, err := io.WriteString(w, errMessage)
+		fmt.Println(err, errMessage)
+		return
+	}
 
 	t.log.Info("serving", "tag", tag)
 
@@ -119,12 +127,10 @@ func (t *tagHandler) alive(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (t *tagHandler) getTag(day int, hour int, currentTime time.Time) string {
-
-	//some input checking, if the hour and day are wrong simply return the previous tag
+func (t *tagHandler) getTag(day int, hour int, currentTime time.Time) (string, error) {
 	//this should never get hit if the call comes from the correctly configured gorilla mux
 	if day > 6 || day < 0 || hour > 23 && hour < 0 {
-		return t.getPreviousTag(currentTime)
+		return "", fmt.Errorf("invalid day (%d) or hour (%d)", day, hour)
 	}
 
 	//Let's convert the diffs to the maintenance window to time.Durations, so we can easily
@@ -134,27 +140,27 @@ func (t *tagHandler) getTag(day int, hour int, currentTime time.Time) string {
 	windowTime := currentTime.Add(diffDays + diffHours)
 
 	if currentTime.After(windowTime) || currentTime.Equal(windowTime) {
-		return t.getCurrentTag(currentTime)
+		return t.getCurrentTag(currentTime), nil
 	}
 
-	return t.getPreviousTag(currentTime)
+	return t.getPreviousTag(currentTime), nil
 }
 
 func (t *tagHandler) getCurrentTag(currentTime time.Time) string {
-	return t.getImageDate(currentTime)
+	return floorToImageDay(currentTime).Format(tagFormat)
 }
 
-//getPreviousTag returns last week's tag according to the imageDay
+// getPreviousTag returns last week's tag according to the imageDay
 func (t *tagHandler) getPreviousTag(currentTime time.Time) string {
-	date := currentTime.AddDate(0, 0, -7)
-
-	return t.getImageDate(date)
+	if int(currentTime.Weekday()) < imageDay {
+		return t.getCurrentTag(currentTime)
+	}
+	return t.getCurrentTag(currentTime.AddDate(0, 0, -7))
 }
 
-func (t *tagHandler) getImageDate(date time.Time) string {
+func floorToImageDay(date time.Time) time.Time {
 	for int(date.Weekday()) != imageDay {
 		date = date.AddDate(0, 0, -1)
 	}
-
-	return fmt.Sprintf("%d%02d%02d", date.Year(), date.Month(), date.Day())
+	return date
 }

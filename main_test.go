@@ -4,11 +4,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr/testr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getTag(t *testing.T) {
@@ -45,12 +46,22 @@ func Test_getTag(t *testing.T) {
 		},
 		{
 			name: "window not yet met",
-			want: "20200524",
+			want: "20200525",
 			args: args{
 				day:         6,
 				hour:        23,
 				currentTime: time.Date(2020, time.June, 5, 22, 0, 0, 0, time.Local),
-				imageDay:    0,
+				imageDay:    1,
+			},
+		},
+		{
+			name: "window not yet met and date before image day",
+			want: "20200525",
+			args: args{
+				day:         6,
+				hour:        23,
+				currentTime: time.Date(2020, time.May, 31, 22, 0, 0, 0, time.Local),
+				imageDay:    1,
 			},
 		},
 		{
@@ -68,15 +79,45 @@ func Test_getTag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			th := tagHandler{
-				log: getLogger(),
+				log: testr.New(t),
 			}
 
 			imageDay = tt.args.imageDay
 
-			if got := th.getTag(tt.args.day, tt.args.hour, tt.args.currentTime); got != tt.want {
-				t.Errorf("getTag() = %v, want %v", got, tt.want)
-			}
+			tag, err := th.getTag(tt.args.day, tt.args.hour, tt.args.currentTime)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, tag, "wrong value from getTag()")
 		})
+	}
+}
+
+func Test_getTag_TagAlwaysIncreases(t *testing.T) {
+	// The tag should always increase as time progresses.
+	imageDay = 1
+	weekday := int(time.Tuesday)
+	hour := 22
+
+	th := tagHandler{
+		log: testr.New(t),
+	}
+
+	stop, err := time.Parse(time.RFC3339, "2022-07-29T10:00:00+02:00")
+	require.NoError(t, err)
+
+	prevTimeFromTag := time.Time{}
+	for c := stop.AddDate(0, -1, 0); c.Before(stop); c = c.Add(time.Hour) {
+		tag, err := th.getTag(weekday, hour, c)
+		assert.NoError(t, err)
+		t.Logf("TIME: (%s/%v)\t%s TAG: %s", c.Format("Mon"), int(c.Weekday()), c.Format(time.RFC3339), tag)
+
+		timeFromTag, err := time.ParseInLocation(tagFormat, tag, time.Local)
+		require.NoError(t, err)
+		assert.Truef(t,
+			(timeFromTag.Equal(prevTimeFromTag) || timeFromTag.After(prevTimeFromTag)),
+			"tag `%s` should be at the same time or after previous tag `%s`, current time: %s",
+			timeFromTag.Format(tagFormat), prevTimeFromTag.Format(tagFormat), c.Format(time.RFC3339))
+
+		prevTimeFromTag = timeFromTag
 	}
 }
 
@@ -179,19 +220,15 @@ func Test_getWindow(t *testing.T) {
 			req, err := http.NewRequest(tt.args.method, tt.args.URL, nil)
 			assert.NoError(t, err)
 
-			router(getLogger()).ServeHTTP(rr, req)
+			router(testr.New(t)).ServeHTTP(rr, req)
 
 			if rr.Code != tt.want.status {
 				t.Errorf("getWindow() = %v, want %v", rr.Code, tt.want.status)
 			}
 
 			body, err := ioutil.ReadAll(rr.Body)
-			assert.NoError(t, err)
-
-			if !strings.Contains(string(body), tt.want.body) {
-				t.Errorf("getWindow() = %s, want %s", body, tt.want.body)
-			}
-
+			require.NoError(t, err)
+			require.Contains(t, string(body), tt.want.body, "wrong value from getWindow()")
 		})
 	}
 }
