@@ -84,7 +84,7 @@ func (t *handler) getWindow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentTime := time.Now()
-	tag, err := getTag(t.imageDay, day, hour, currentTime)
+	tag, err := calculateTag(t.imageDay, day, hour, currentTime)
 	if err != nil {
 		t.error(w, fmt.Errorf("error calculating tag: %w", err), http.StatusUnprocessableEntity)
 		return
@@ -114,7 +114,7 @@ func (t *handler) error(w http.ResponseWriter, err error, code int) {
 	http.Error(w, err.Error(), code)
 }
 
-func getTag(imageDay time.Weekday, day, hour int, currentTime time.Time) (string, error) {
+func calculateTag(imageDay time.Weekday, day, hour int, currentTime time.Time) (string, error) {
 	//this should never get hit if the call comes from the correctly configured gorilla mux
 	if day > 6 || day < 0 || hour > 23 || hour < 0 {
 		return "", fmt.Errorf("invalid day (%d) or hour (%d)", day, hour)
@@ -139,6 +139,7 @@ func getCurrentTag(imageDay time.Weekday, currentTime time.Time) string {
 
 // getPreviousTag returns last week's tag according to the imageDay
 func getPreviousTag(imageDay time.Weekday, currentTime time.Time) string {
+	// If the current weekday is before the imageDay, the floor is the weekday of the previous week.
 	if currentTime.Weekday() < imageDay {
 		return getCurrentTag(imageDay, currentTime)
 	}

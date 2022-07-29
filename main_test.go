@@ -77,7 +77,7 @@ func Test_getTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tag, err := getTag(tt.args.imageDay, tt.args.day, tt.args.hour, tt.args.currentTime)
+			tag, err := calculateTag(tt.args.imageDay, tt.args.day, tt.args.hour, tt.args.currentTime)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, tag, "wrong value from getTag()")
 		})
@@ -94,7 +94,7 @@ func Test_getTag_TagAlwaysIncreases(t *testing.T) {
 
 	prevTimeFromTag := time.Time{}
 	for c := stop.AddDate(0, -1, 0); c.Before(stop); c = c.Add(time.Hour) {
-		tag, err := getTag(time.Monday, weekday, hour, c)
+		tag, err := calculateTag(time.Monday, weekday, hour, c)
 		assert.NoError(t, err)
 		t.Logf("TIME: (%s/%v)\t%s TAG: %s", c.Format("Mon"), int(c.Weekday()), c.Format(time.RFC3339), tag)
 
