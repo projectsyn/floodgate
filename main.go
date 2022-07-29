@@ -83,13 +83,19 @@ func (t *handler) getWindow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tag, err := getTag(t.imageDay, day, hour, time.Now())
+	currentTime := time.Now()
+	tag, err := getTag(t.imageDay, day, hour, currentTime)
 	if err != nil {
 		t.error(w, fmt.Errorf("error calculating tag: %w", err), http.StatusUnprocessableEntity)
 		return
 	}
 
-	t.log.Info("serving", "tag", tag)
+	t.log.Info("serving",
+		"current_time", currentTime.Format(time.RFC3339),
+		"requested_day", day,
+		"requested_hour", hour,
+		"tag", tag,
+	)
 
 	http.Redirect(w, r, "/tag/"+tag, http.StatusFound)
 }
