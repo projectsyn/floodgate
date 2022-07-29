@@ -79,10 +79,9 @@ func Test_getTag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			th := tagHandler{
-				log: testr.New(t),
+				log:      testr.New(t),
+				imageDay: tt.args.imageDay,
 			}
-
-			imageDay = tt.args.imageDay
 
 			tag, err := th.getTag(tt.args.day, tt.args.hour, tt.args.currentTime)
 			require.NoError(t, err)
@@ -93,12 +92,12 @@ func Test_getTag(t *testing.T) {
 
 func Test_getTag_TagAlwaysIncreases(t *testing.T) {
 	// The tag should always increase as time progresses.
-	imageDay = 1
 	weekday := int(time.Tuesday)
 	hour := 22
 
 	th := tagHandler{
-		log: testr.New(t),
+		log:      testr.New(t),
+		imageDay: 1,
 	}
 
 	stop, err := time.Parse(time.RFC3339, "2022-07-29T10:00:00+02:00")

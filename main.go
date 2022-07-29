@@ -16,29 +16,18 @@ import (
 )
 
 const (
-	defaultImageDay = 1
+	defaultImageDay = time.Monday
 	tagFormat       = "20060102"
 )
 
 var (
 	Version   = "unreleased"
 	BuildDate = "now"
-	//Should be replaced with an env var
-	// 0-6, Sunday=0
-	imageDay = func(defaultValue int) int {
-		if str, ok := os.LookupEnv("FG_IMAGE_DAY"); ok {
-			if d, err := strconv.Atoi(str); err != nil {
-				fmt.Printf("failed to parse $%s: %v", "FG_IMAGE_DAY\n", err)
-			} else {
-				return d
-			}
-		}
-		return defaultValue
-	}(defaultImageDay)
 )
 
 type tagHandler struct {
-	log logr.Logger
+	log      logr.Logger
+	imageDay int
 }
 
 func printVersion(log logr.Logger) {
@@ -112,7 +101,10 @@ func (t *tagHandler) getWindow(w http.ResponseWriter, r *http.Request) {
 
 func router(log logr.Logger) *mux.Router {
 	r := mux.NewRouter()
-	h := tagHandler{log: log}
+	h := tagHandler{
+		log:      log,
+		imageDay: imageDayFromEnv(defaultImageDay),
+	}
 	r.HandleFunc("/window/{day:[0-6]}/{hour:2[0-3]|[01][0-9]}", h.getWindow).Methods("GET")
 	r.HandleFunc("/alive", h.alive).Methods("GET")
 	return r
@@ -147,20 +139,33 @@ func (t *tagHandler) getTag(day int, hour int, currentTime time.Time) (string, e
 }
 
 func (t *tagHandler) getCurrentTag(currentTime time.Time) string {
-	return floorToImageDay(currentTime).Format(tagFormat)
+	return t.floorToImageDay(currentTime).Format(tagFormat)
 }
 
 // getPreviousTag returns last week's tag according to the imageDay
 func (t *tagHandler) getPreviousTag(currentTime time.Time) string {
-	if int(currentTime.Weekday()) < imageDay {
+	if int(currentTime.Weekday()) < t.imageDay {
 		return t.getCurrentTag(currentTime)
 	}
 	return t.getCurrentTag(currentTime.AddDate(0, 0, -7))
 }
 
-func floorToImageDay(date time.Time) time.Time {
-	for int(date.Weekday()) != imageDay {
+func (t *tagHandler) floorToImageDay(date time.Time) time.Time {
+	for int(date.Weekday()) != t.imageDay {
 		date = date.AddDate(0, 0, -1)
 	}
 	return date
+}
+
+// imageDayFromEnv returns the imageDay from the environment variable FG_IMAGE_DAY.
+// Values are from 0-6 where Sunday=0
+func imageDayFromEnv(defaultValue time.Weekday) int {
+	if str, ok := os.LookupEnv("FG_IMAGE_DAY"); ok {
+		if d, err := strconv.Atoi(str); err != nil {
+			fmt.Printf("failed to parse $%s: %v", "FG_IMAGE_DAY\n", err)
+		} else {
+			return d
+		}
+	}
+	return int(defaultValue)
 }
