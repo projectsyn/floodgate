@@ -69,28 +69,25 @@ func (t *tagHandler) getWindow(w http.ResponseWriter, r *http.Request) {
 
 	day, err := strconv.Atoi(vars["day"])
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		errMessage := fmt.Sprintf("error parsing day")
-		_, err := io.WriteString(w, errMessage)
-		t.log.Error(err, errMessage)
+		fullErr := fmt.Errorf("error parsing day: %w", err)
+		t.log.Error(fullErr, "failed to parse day")
+		http.Error(w, fullErr.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	hour, err := strconv.Atoi(vars["hour"])
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		errMessage := fmt.Sprintf("error parsing hour")
-		_, err := io.WriteString(w, errMessage)
-		fmt.Println(err, errMessage)
+		fullErr := fmt.Errorf("error parsing hour: %w", err)
+		t.log.Error(fullErr, "failed to parse hour")
+		http.Error(w, fullErr.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	tag, err := t.getTag(day, hour, time.Now())
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		errMessage := fmt.Sprintf("error calculating tag: %s", err)
-		_, err := io.WriteString(w, errMessage)
-		fmt.Println(err, errMessage)
+		fullErr := fmt.Errorf("error calculating tag: %w", err)
+		t.log.Error(fullErr, "failed to calculate tag")
+		http.Error(w, fullErr.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
