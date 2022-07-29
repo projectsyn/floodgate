@@ -116,7 +116,7 @@ func (t *handler) error(w http.ResponseWriter, err error, code int) {
 
 func getTag(imageDay time.Weekday, day, hour int, currentTime time.Time) (string, error) {
 	//this should never get hit if the call comes from the correctly configured gorilla mux
-	if day > 6 || day < 0 || hour > 23 && hour < 0 {
+	if day > 6 || day < 0 || hour > 23 || hour < 0 {
 		return "", fmt.Errorf("invalid day (%d) or hour (%d)", day, hour)
 	}
 
