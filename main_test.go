@@ -17,7 +17,7 @@ func Test_getTag(t *testing.T) {
 		day         int
 		hour        int
 		currentTime time.Time
-		imageDay    int
+		imageDay    time.Weekday
 	}
 	tests := []struct {
 		name string
@@ -31,7 +31,7 @@ func Test_getTag(t *testing.T) {
 				day:         2,
 				hour:        23,
 				currentTime: time.Date(2020, time.June, 5, 22, 0, 0, 0, time.Local),
-				imageDay:    1,
+				imageDay:    time.Monday,
 			},
 		},
 		{
@@ -41,7 +41,7 @@ func Test_getTag(t *testing.T) {
 				day:         2,
 				hour:        23,
 				currentTime: time.Date(2020, time.June, 5, 22, 0, 0, 0, time.Local),
-				imageDay:    0,
+				imageDay:    time.Sunday,
 			},
 		},
 		{
@@ -51,7 +51,7 @@ func Test_getTag(t *testing.T) {
 				day:         6,
 				hour:        23,
 				currentTime: time.Date(2020, time.June, 5, 22, 0, 0, 0, time.Local),
-				imageDay:    1,
+				imageDay:    time.Monday,
 			},
 		},
 		{
@@ -61,7 +61,7 @@ func Test_getTag(t *testing.T) {
 				day:         6,
 				hour:        23,
 				currentTime: time.Date(2020, time.May, 31, 22, 0, 0, 0, time.Local),
-				imageDay:    1,
+				imageDay:    time.Monday,
 			},
 		},
 		{
@@ -71,20 +71,13 @@ func Test_getTag(t *testing.T) {
 				day:         5,
 				hour:        22,
 				currentTime: time.Date(2020, time.June, 5, 22, 0, 0, 0, time.Local),
-				imageDay:    1,
+				imageDay:    time.Monday,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			th := tagHandler{
-				log: testr.New(t),
-			}
-
-			imageDay = tt.args.imageDay
-
-			tag, err := th.getTag(tt.args.day, tt.args.hour, tt.args.currentTime)
+			tag, err := calculateTag(tt.args.imageDay, tt.args.day, tt.args.hour, tt.args.currentTime)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, tag, "wrong value from getTag()")
 		})
@@ -93,20 +86,15 @@ func Test_getTag(t *testing.T) {
 
 func Test_getTag_TagAlwaysIncreases(t *testing.T) {
 	// The tag should always increase as time progresses.
-	imageDay = 1
 	weekday := int(time.Tuesday)
 	hour := 22
-
-	th := tagHandler{
-		log: testr.New(t),
-	}
 
 	stop, err := time.Parse(time.RFC3339, "2022-07-29T10:00:00+02:00")
 	require.NoError(t, err)
 
 	prevTimeFromTag := time.Time{}
 	for c := stop.AddDate(0, -1, 0); c.Before(stop); c = c.Add(time.Hour) {
-		tag, err := th.getTag(weekday, hour, c)
+		tag, err := calculateTag(time.Monday, weekday, hour, c)
 		assert.NoError(t, err)
 		t.Logf("TIME: (%s/%v)\t%s TAG: %s", c.Format("Mon"), int(c.Weekday()), c.Format(time.RFC3339), tag)
 
