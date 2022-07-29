@@ -25,16 +25,6 @@ var (
 	BuildDate = "now"
 )
 
-type tagHandler struct {
-	log      logr.Logger
-	imageDay int
-}
-
-func printVersion(log logr.Logger) {
-	log.Info("App", "Version", Version, "Build Date", BuildDate)
-	log.Info("Go", "Version", runtime.Version(), "OS", runtime.GOOS, "ARCH", runtime.GOARCH)
-}
-
 func getLogger() logr.Logger {
 	formatter := new(logrus.TextFormatter)
 	formatter.DisableTimestamp = true
@@ -45,13 +35,11 @@ func getLogger() logr.Logger {
 }
 
 func main() {
-
 	log := getLogger()
-
-	printVersion(log)
+	log.Info("App", "Version", Version, "Build Date", BuildDate)
+	log.Info("Go", "Version", runtime.Version(), "OS", runtime.GOOS, "ARCH", runtime.GOARCH)
 
 	r := router(log)
-
 	srv := &http.Server{
 		Handler:      r,
 		WriteTimeout: 30 * time.Second,
@@ -64,41 +52,9 @@ func main() {
 	}
 }
 
-func (t *tagHandler) getWindow(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	day, err := strconv.Atoi(vars["day"])
-	if err != nil {
-		fullErr := fmt.Errorf("error parsing day: %w", err)
-		t.log.Error(fullErr, "failed to parse day")
-		http.Error(w, fullErr.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	hour, err := strconv.Atoi(vars["hour"])
-	if err != nil {
-		fullErr := fmt.Errorf("error parsing hour: %w", err)
-		t.log.Error(fullErr, "failed to parse hour")
-		http.Error(w, fullErr.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	tag, err := t.getTag(day, hour, time.Now())
-	if err != nil {
-		fullErr := fmt.Errorf("error calculating tag: %w", err)
-		t.log.Error(fullErr, "failed to calculate tag")
-		http.Error(w, fullErr.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	t.log.Info("serving", "tag", tag)
-
-	http.Redirect(w, r, "/tag/"+tag, http.StatusFound)
-}
-
 func router(log logr.Logger) *mux.Router {
 	r := mux.NewRouter()
-	h := tagHandler{
+	h := handler{
 		log:      log,
 		imageDay: imageDayFromEnv(defaultImageDay),
 	}
@@ -107,7 +63,38 @@ func router(log logr.Logger) *mux.Router {
 	return r
 }
 
-func (t *tagHandler) alive(w http.ResponseWriter, r *http.Request) {
+type handler struct {
+	log      logr.Logger
+	imageDay time.Weekday
+}
+
+func (t *handler) getWindow(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	day, err := strconv.Atoi(vars["day"])
+	if err != nil {
+		t.error(w, fmt.Errorf("error parsing day: %w", err), http.StatusUnprocessableEntity)
+		return
+	}
+
+	hour, err := strconv.Atoi(vars["hour"])
+	if err != nil {
+		t.error(w, fmt.Errorf("error parsing hour: %w", err), http.StatusUnprocessableEntity)
+		return
+	}
+
+	tag, err := getTag(t.imageDay, day, hour, time.Now())
+	if err != nil {
+		t.error(w, fmt.Errorf("error calculating tag: %w", err), http.StatusUnprocessableEntity)
+		return
+	}
+
+	t.log.Info("serving", "tag", tag)
+
+	http.Redirect(w, r, "/tag/"+tag, http.StatusFound)
+}
+
+func (t *handler) alive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err := io.WriteString(w, `{"status":"ok"}`)
@@ -116,7 +103,12 @@ func (t *tagHandler) alive(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (t *tagHandler) getTag(day int, hour int, currentTime time.Time) (string, error) {
+func (t *handler) error(w http.ResponseWriter, err error, code int) {
+	t.log.Error(err, "error handling request", "code", code)
+	http.Error(w, err.Error(), code)
+}
+
+func getTag(imageDay time.Weekday, day, hour int, currentTime time.Time) (string, error) {
 	//this should never get hit if the call comes from the correctly configured gorilla mux
 	if day > 6 || day < 0 || hour > 23 && hour < 0 {
 		return "", fmt.Errorf("invalid day (%d) or hour (%d)", day, hour)
@@ -129,26 +121,26 @@ func (t *tagHandler) getTag(day int, hour int, currentTime time.Time) (string, e
 	windowTime := currentTime.Add(diffDays + diffHours)
 
 	if currentTime.After(windowTime) || currentTime.Equal(windowTime) {
-		return t.getCurrentTag(currentTime), nil
+		return getCurrentTag(imageDay, currentTime), nil
 	}
 
-	return t.getPreviousTag(currentTime), nil
+	return getPreviousTag(imageDay, currentTime), nil
 }
 
-func (t *tagHandler) getCurrentTag(currentTime time.Time) string {
-	return t.floorToImageDay(currentTime).Format(tagFormat)
+func getCurrentTag(imageDay time.Weekday, currentTime time.Time) string {
+	return floorToImageDay(imageDay, currentTime).Format(tagFormat)
 }
 
 // getPreviousTag returns last week's tag according to the imageDay
-func (t *tagHandler) getPreviousTag(currentTime time.Time) string {
-	if int(currentTime.Weekday()) < t.imageDay {
-		return t.getCurrentTag(currentTime)
+func getPreviousTag(imageDay time.Weekday, currentTime time.Time) string {
+	if currentTime.Weekday() < imageDay {
+		return getCurrentTag(imageDay, currentTime)
 	}
-	return t.getCurrentTag(currentTime.AddDate(0, 0, -7))
+	return getCurrentTag(imageDay, currentTime.AddDate(0, 0, -7))
 }
 
-func (t *tagHandler) floorToImageDay(date time.Time) time.Time {
-	for int(date.Weekday()) != t.imageDay {
+func floorToImageDay(imageDay time.Weekday, date time.Time) time.Time {
+	for date.Weekday() != imageDay {
 		date = date.AddDate(0, 0, -1)
 	}
 	return date
@@ -156,13 +148,15 @@ func (t *tagHandler) floorToImageDay(date time.Time) time.Time {
 
 // imageDayFromEnv returns the imageDay from the environment variable FG_IMAGE_DAY.
 // Values are from 0-6 where Sunday=0
-func imageDayFromEnv(defaultValue time.Weekday) int {
+func imageDayFromEnv(defaultValue time.Weekday) time.Weekday {
 	if str, ok := os.LookupEnv("FG_IMAGE_DAY"); ok {
 		if d, err := strconv.Atoi(str); err != nil {
-			fmt.Printf("failed to parse $%s: %v", "FG_IMAGE_DAY\n", err)
+			fmt.Printf("failed to parse $%s: %v", "FG_IMAGE_DAY", err)
+		} else if d < 0 || d > 6 {
+			fmt.Printf("$%s must be between 0 and 6\n", "FG_IMAGE_DAY")
 		} else {
-			return d
+			return time.Weekday(d)
 		}
 	}
-	return int(defaultValue)
+	return defaultValue
 }
