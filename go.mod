@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/bombsimon/logrusr/v3 v3.0.0
 	github.com/go-logr/logr v1.2.3
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 )
