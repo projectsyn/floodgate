@@ -16,7 +16,7 @@
         "^playbook\\.yml$"
       ],
       "matchStrings": [
-        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/ui-bundle(-[a-z]+)?\\.zip"
+        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/ui-bundle(-[a-z0-9]+)?\\.zip"
       ],
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
@@ -24,9 +24,23 @@
   ],
   "packageRules": [
     {
-      "description": "This repository does not build its docs on pull requests, so every UI bundle release waits for a person.",
+      "description": "Patch releases of the UI bundle merge once the docs build passes.",
       "matchDepNames": [
         "vshn/antora-ui"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Minor and major UI bundle releases change how every page looks, and a green build says nothing about appearance, so a person reviews them.",
+      "matchDepNames": [
+        "vshn/antora-ui"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "major"
       ],
       "automerge": false
     }
