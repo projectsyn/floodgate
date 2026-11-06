@@ -5,7 +5,30 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
-    "labels": [
+  "labels": [
     "dependency"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track the Antora UI bundle pinned in the playbook. No built-in manager reads a URL inside a YAML value, so without this the pin never moves (vshn/antora-ui#204).",
+      "fileMatch": [
+        "^playbook\\.yml$"
+      ],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/ui-bundle(-[a-z]+)?\\.zip"
+      ],
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "This repository does not build its docs on pull requests, so every UI bundle release waits for a person.",
+      "matchDepNames": [
+        "vshn/antora-ui"
+      ],
+      "automerge": false
+    }
   ]
 }
