@@ -16,7 +16,7 @@ VERSION ?= $(shell git describe --tags --always --dirty --match=v* || (echo "com
 IMAGE_NAME ?= docker.io/projectsyn/$(BINARY_NAME):$(VERSION)
 
 # Antora variables
-ANTORA_CMD  ?= $(DOCKER_CMD) run $(DOCKER_ARGS) --volume "$${PWD}":/antora vshn/antora:1.3
+ANTORA_CMD  ?= $(DOCKER_CMD) run $(DOCKER_ARGS) --volume "$${PWD}":/antora ghcr.io/vshn/antora:3.1.2.2
 ANTORA_OPTS ?= --cache-dir=.cache/antora
 
 VALE_CMD  ?= $(DOCKER_CMD) run $(DOCKER_ARGS) --volume "$${PWD}"/docs/modules:/pages vshn/vale:2.1.1
